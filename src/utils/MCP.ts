@@ -5,7 +5,6 @@ import {
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "./SSEClient";
-// import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 export default class MCPClient {
   private mcp: Client;
@@ -18,7 +17,6 @@ export default class MCPClient {
       apiKey: process.env.ANTHROPIC_API_KEY || "",
     });
     this.mcp = new Client({ name: "mcp-client-cli", version: "1.0.0" });
-    // this.connectToServer();
   }
   // methods will go here
 
@@ -26,7 +24,6 @@ export default class MCPClient {
     try {
       this.transport = await new SSEClientTransport(new URL(this.SSE_URL));
       await this.mcp.connect(this.transport);
-      // console.log("Endpoint", this.transport._newEndpoint);
 
       const toolsResult = await this.mcp.listTools();
       this.tools = toolsResult.tools.map((tool) => {
@@ -46,7 +43,7 @@ export default class MCPClient {
     }
   }
 
-  async processQuery(query: string) {
+  async *processQuery(query: string) {
     const messages: MessageParam[] = [
       {
         role: "user",
@@ -61,14 +58,12 @@ export default class MCPClient {
       tools: this.tools,
     });
 
-    // console.log("Response", response);
-
-    const finalText = [];
-    const toolResults = [];
-
     for (const content of response.content) {
       if (content.type === "text") {
-        finalText.push(content.text);
+        yield {
+          type: "text",
+          text: content.text,
+        };
       } else if (content.type === "tool_use") {
         const toolName = content.name;
         const toolArgs = content.input as { [x: string]: unknown } | undefined;
@@ -77,10 +72,13 @@ export default class MCPClient {
           name: toolName,
           arguments: toolArgs,
         });
-        toolResults.push(result);
-        finalText.push(
-          `[Calling tool ${toolName} with args ${JSON.stringify(toolArgs)}]`
-        );
+
+        yield {
+          type: "tool_use",
+          toolName,
+          toolArgs,
+          result,
+        };
 
         messages.push({
           role: "user",
@@ -93,12 +91,16 @@ export default class MCPClient {
           messages,
         });
 
-        finalText.push(
-          response.content[0].type === "text" ? response.content[0].text : ""
-        );
+        yield response.content[0].type === "text"
+          ? {
+              type: "text",
+              text: response.content[0].text ?? "",
+            }
+          : {
+              type: "text",
+              text: "",
+            };
       }
     }
-
-    return finalText.join("\n");
   }
 }

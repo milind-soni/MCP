@@ -1,4 +1,5 @@
 import MCPClient from "@/utils/MCP";
+import { SseError } from "@/utils/SSEClient";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -18,20 +19,10 @@ interface Session {
   status: string;
 }
 
-export async function getMessageEndpoint(session_id: string) {
-  const response = await fetch(
-    ENDPOINTS.sse.replace("{session_id}", session_id)
-  );
-
-  // const data = (await response.json()) as { url: string };
-  console.log(await response.text()); 
-}
-
-export async function getSession(udf_tokens: string[]) {
+export async function getSession(udf_tokens: string[], regenerate = false) {
   const session = cookies().get("session")?.value;
 
-  // if there is no session id in the cookies, create a new session
-  if (!session) {
+  if (!session || regenerate) {
     const options = {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -41,11 +32,12 @@ export async function getSession(udf_tokens: string[]) {
     try {
       const response = await fetch(ENDPOINTS.create, options);
       const data = (await response.json()) as Session;
+      console.log("Data :", data);
+      console.log("Session :", session);
       cookies().set("session", JSON.stringify(data), {
         maxAge: 60 * 60 * 24 * 7,
         httpOnly: true,
       });
-
       return data;
     } catch (error) {
       console.error(error);
@@ -57,6 +49,53 @@ export async function getSession(udf_tokens: string[]) {
 }
 
 export async function POST(request: NextRequest) {
+  async function connectClient(sessionId: string, udf_tokens: string[]) {
+    let client = new MCPClient(
+      ENDPOINTS.sse.replace("{session_id}", sessionId)
+    );
+    try {
+      await client.connectToServer();
+      return client;
+    } catch (error: unknown) {
+      if (
+        (error as SseError).event.code === 503 ||
+        (error as SseError).event.code === 404
+      ) {
+        const session = await getSession(udf_tokens, true);
+        if (!session) {
+          return null;
+        }
+        client = new MCPClient(
+          ENDPOINTS.sse.replace("{session_id}", session.id)
+        );
+        try {
+          await client.connectToServer();
+          return client;
+        } catch (error: unknown) {
+          return null;
+        }
+      }
+      return null;
+    }
+  }
+
+  function createStream(client: MCPClient, query: string) {
+    return new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of client.processQuery(query)) {
+            const data = JSON.stringify(chunk) + "\n";
+            controller.enqueue(new TextEncoder().encode(data));
+          }
+          controller.close();
+        } catch (error) {
+          console.error("Stream error:", error);
+          controller.error(error);
+        }
+      },
+    });
+  }
+
   try {
     const body = await request.json();
     const { udf_tokens, query } = body as {
@@ -71,8 +110,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const session = await getSession(udf_tokens);
-
+    let session = await getSession(udf_tokens);
     if (!session) {
       return NextResponse.json(
         { error: "Failed to create session" },
@@ -80,13 +118,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // console.log(ENDPOINTS.sse.replace("{session_id}", session.id));
-    const client = new MCPClient(
-      ENDPOINTS.sse.replace("{session_id}", session.id)
-    );
-    await client.connectToServer();
+    const client = await connectClient(session.id, udf_tokens);
+    if (!client) {
+      return NextResponse.json(
+        { error: "Failed to connect to server" },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json({ response: await client.processQuery(query) });
+    const stream = createStream(client, query);
+    return new NextResponse(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(

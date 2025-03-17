@@ -157,33 +157,11 @@ export class SSEClientTransport implements Transport {
 
       this._eventSource.addEventListener("endpoint", (event: Event) => {
         const messageEvent = event as MessageEvent;
-
-        // try {
-        //   this._endpoint = new URL(messageEvent.data, this._url);
-        //   if (this._endpoint.origin !== this._url.origin) {
-        //     throw new Error(
-        //       `Endpoint origin does not match connection origin: ${this._endpoint.origin}`,
-        //     );
-        //   }
-        // } catch (error) {
-        //   reject(error);
-        //   this.onerror?.(error as Error);
-
-        //   void this.close();
-        //   return;
-        // }
-
         try {
-          // Parse the original URL to get components
           const urlPath = this._url.pathname;
-
-          // Get the chat ID path part (chat/uuid)
           const pathParts = urlPath.split("/");
-          // Keep only the parts up to the chat ID (typically /chat/uuid)
-          // This assumes the path structure is /chat/uuid/sse
           const chatPath = pathParts.slice(0, 3).join("/");
-
-          // Construct the endpoint URL preserving the chat ID path
+          
           if (messageEvent.data.startsWith("/")) {
             // If server sends absolute path, combine with chat path
             this._endpoint = new URL(

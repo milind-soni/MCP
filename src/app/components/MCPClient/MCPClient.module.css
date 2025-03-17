@@ -1,4 +1,4 @@
-.chat-container {
+.chatContainer {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -7,20 +7,13 @@
   font-family: Arial, sans-serif;
 }
 
-.chat-header {
-  background-color: #4a90e2;
-  color: white;
-  padding: 10px;
-  text-align: center;
-  font-size: 1.5em;
-}
-
 .chatMessages {
   flex: 1;
   display: flex;
   flex-direction: column;
   padding: 20px;
   overflow-y: auto;
+  justify-content: flex-end
 }
 
 .message {
@@ -39,6 +32,20 @@
   background-color: #ffffff;
   align-self: flex-start;
   border: 1px solid #ddd;
+}
+
+.toolMessage {
+  background-color: #f0f0f0;
+  /* Light gray for tool calls */
+  border: 1px solid #ccc;
+  font-family: "Courier New", Courier, monospace;
+  /* Monospace font for JSON */
+  max-width: 80%;
+  /* Wider to accommodate JSON */
+  white-space: pre-wrap;
+  /* Preserve whitespace in <pre> */
+  overflow-x: auto;
+  /* Horizontal scroll for long JSON */
 }
 
 .chatInput {
