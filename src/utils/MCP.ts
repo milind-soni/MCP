@@ -4,8 +4,8 @@ import {
   Tool,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-
+import { SSEClientTransport } from "./SSEClient";
+// import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 export default class MCPClient {
   private mcp: Client;
@@ -18,14 +18,15 @@ export default class MCPClient {
       apiKey: process.env.ANTHROPIC_API_KEY || "",
     });
     this.mcp = new Client({ name: "mcp-client-cli", version: "1.0.0" });
-    this.connectToServer();
+    // this.connectToServer();
   }
   // methods will go here
 
   async connectToServer() {
     try {
-      this.transport = new SSEClientTransport(new URL(this.SSE_URL));
-      this.mcp.connect(this.transport);
+      this.transport = await new SSEClientTransport(new URL(this.SSE_URL));
+      await this.mcp.connect(this.transport);
+      // console.log("Endpoint", this.transport._newEndpoint);
 
       const toolsResult = await this.mcp.listTools();
       this.tools = toolsResult.tools.map((tool) => {
@@ -59,6 +60,8 @@ export default class MCPClient {
       messages,
       tools: this.tools,
     });
+
+    // console.log("Response", response);
 
     const finalText = [];
     const toolResults = [];

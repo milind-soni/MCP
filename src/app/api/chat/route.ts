@@ -22,6 +22,9 @@ export async function getMessageEndpoint(session_id: string) {
   const response = await fetch(
     ENDPOINTS.sse.replace("{session_id}", session_id)
   );
+
+  // const data = (await response.json()) as { url: string };
+  console.log(await response.text()); 
 }
 
 export async function getSession(udf_tokens: string[]) {
@@ -77,9 +80,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // console.log(ENDPOINTS.sse.replace("{session_id}", session.id));
     const client = new MCPClient(
       ENDPOINTS.sse.replace("{session_id}", session.id)
     );
+    await client.connectToServer();
 
     return NextResponse.json({ response: await client.processQuery(query) });
   } catch (error) {
