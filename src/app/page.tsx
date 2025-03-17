@@ -8,7 +8,8 @@ import { useSearchParams } from "next/navigation";
 export default function Page() {
   const searchParams = useSearchParams();
   const tokens = searchParams.get("tokens")?.split(",") as string[];
-  console.log("Tokens :", tokens);
+  
+  // http://localhost:3000/?tokens=fsh_67LUyn8q5fpZCb9MK3xpg1%2Cfsh_67LUyn8q5fpZCb9MK3xpg2%2Cfsh_67LUyn8q5fpZCb9MK3xpg3
 
   return (
     <div className={styles.page}>
