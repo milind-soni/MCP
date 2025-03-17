@@ -26,6 +26,15 @@
   margin-right: auto;
 }
 
+.toolMessage {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  font-family: "Courier New", Courier, monospace;
+  max-width: 80%;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
 .message {
   margin-bottom: 15px;
   padding: 10px;
