@@ -146,6 +146,7 @@ export default function MCPClient({ tokens }: { tokens: string[] }) {
         <button type="submit" disabled={isLoading}>
           {isLoading ? "Sending..." : "Send"}
         </button>
+        <span>Fused + Claude Sonnet</span>
       </form>
     </div>
   );
